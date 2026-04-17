@@ -23,6 +23,7 @@ import random
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Iterable
 
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 from playwright_stealth import Stealth
@@ -38,6 +39,18 @@ WG_BASE_URL = "https://www.wg-gesucht.de"
 DEFAULT_DELAY = (4.0, 9.0)
 MAX_SCROLLS = 3
 
+# City ID map for WG-Gesucht
+CITY_IDS = {
+    "München": 90,
+    "Berlin": 1,
+    "Hamburg": 2,
+    "Frankfurt": 8,
+    "Köln": 5,
+    "Stuttgart": 23,
+    "Düsseldorf": 6,
+    "Nürnberg": 122,
+}
+
 
 # ── Data classes ──────────────────────────────────────────────────────────────
 
@@ -51,28 +64,63 @@ class WGSearchParams:
     page: int = 0
 
     def build_url(self) -> str:
-        city_slug = (
-            self.city.lower()
-            .replace("ü", "ue").replace("ö", "oe")
-            .replace("ä", "ae").replace("ß", "ss")
-            .replace(" ", "-")
-        )
+        """
+        Build the actual WG-Gesucht search URL.
 
-        if self.district:
-            district_slug = self.district.lower().replace("ü", "ue").replace(" ", "-")
-            url = f"{WG_BASE_URL}/zimmer-in-{city_slug}.{district_slug}.html"
+        Real URL format discovered from browser:
+        https://www.wg-gesucht.de/wg-zimmer-und-1-zimmer-wohnungen-und-wohnungen-in-{city}.{city_id}.0+1+2.1.0.html
+        ?categories[]=0&categories[]=1&categories[]=2
+        &rent_types[]=2&rent_types[]=1&rent_types[]=3
+        &rent_range=0,0&min_rent=0&offer_filter=1&city_id={city_id}
+        &sort_order=0&noDeact=1
+
+        Category IDs:
+          0 = WG-Zimmer
+          1 = 1-Zimmer-Wohnung
+          2 = Wohnung
+
+        Rent type IDs:
+          1 = Warmmiete
+          2 = Kaltmiete
+          3 = Nebenkosten
+        """
+        city_slug = self.city.replace("ü", "ue").replace(" ", "-")
+        city_id = CITY_IDS.get(self.city, 90)
+
+        # Build categories param
+        if self.wg_only:
+            categories = [0]  # WG-Zimmer only
         else:
-            url = f"{WG_BASE_URL}/zimmer-in-{city_slug}.html"
+            categories = [0, 1, 2]  # All room types
 
-        params = []
+        cats = "&".join(f"categories[]={c}" for c in categories)
+        rent_types = "&".join(f"rent_types[]={r}" for r in [2, 1, 3])
+
+        # Price filter (rent_range = min,max)
+        rent_range = "0,0"
         if self.max_price:
-            params.append(f"pr={self.max_price}")
+            rent_range = f"0,{self.max_price}"
+
+        # Size filter (size_range = min,max)
+        size_range = "0,0"
         if self.min_size_sqm:
-            params.append(f"sui={int(self.min_size_sqm)}")
-        if self.page > 0:
-            params.append(f"b={self.page * 20}")
-        if params:
-            url += "?" + "&".join(params)
+            size_range = f"{int(self.min_size_sqm)},0"
+
+        # Page offset (WG-Gesucht pagination = 20 items per page)
+        page_offset = self.page * 20
+
+        url = (
+            f"{WG_BASE_URL}/"
+            f"wg-zimmer-und-1-zimmer-wohnungen-und-wohnungen-in-"
+            f"{city_slug}.{city_id}.0+1+2.1.0.html"
+            f"?{cats}"
+            f"&{rent_types}"
+            f"&rent_range={rent_range}"
+            f"&size_range={size_range}"
+            f"&min_rent=0&offer_filter=1&city_id={city_id}"
+            f"&sort_order=0&noDeact=1"
+            f"&offset={page_offset}"
+        )
 
         logger.info(f"WG-Gesucht URL: {url}")
         return url
@@ -170,7 +218,8 @@ async def fetch_listings(params: WGSearchParams) -> list[WGListing]:
         )
 
         page: Page = await context.new_page()
-        # Apply stealth patches to hide automation signals
+
+        # Apply stealth patches
         stealth = Stealth()
         await stealth.apply_stealth_async(page)
 
@@ -183,14 +232,14 @@ async def fetch_listings(params: WGSearchParams) -> list[WGListing]:
             if response is None or response.status in (403, 404, 503):
                 logger.warning(
                     f"WG-Gesucht blocked (status {response.status if response else 'None'}). "
-                    "URL structure may have changed or IP is blocked."
+                    "Try again later."
                 )
                 return []
 
             # Wait for JS to render
             await asyncio.sleep(random.uniform(2.0, 4.0))
 
-            # Try multiple selectors (WG-Gesucht changes layouts frequently)
+            # Try multiple selectors
             selector_patterns = [
                 "div[id^='offer_list_item']",
                 "div.offer_list_item",
@@ -198,6 +247,7 @@ async def fetch_listings(params: WGSearchParams) -> list[WGListing]:
                 "article[class*='offer']",
                 ".offer_list_item",
                 "[data-id]",
+                "div[class*='offer-item']",
             ]
 
             cards: list = []
@@ -247,6 +297,7 @@ async def fetch_listings(params: WGSearchParams) -> list[WGListing]:
 def _parse_card_soup(card_soup) -> WGListing | None:
     """Parse a BeautifulSoup card element into a WGListing."""
     try:
+        # Title + URL
         title_elem = (
             card_soup.select_one("h3 a, h4 a, .headline a, a[href*='zimmer'], a[href*='wohnungen']")
         )
@@ -292,7 +343,7 @@ def _parse_card_soup(card_soup) -> WGListing | None:
         avail_text = avail_elem.get_text(strip=True) if avail_elem else ""
         available_from = _parse_date(avail_text)
 
-        # Images — dedupe, limit 10
+        # Images
         img_elems = card_soup.select("img[src*='photos'], img[src*='wg-'], img.list-image, img")
         image_urls = []
         for img in img_elems:
