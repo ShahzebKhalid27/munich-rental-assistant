@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth
 
 from ..media import get_listing_image_path, get_listing_image_url
 
@@ -170,7 +170,9 @@ async def fetch_listings(params: WGSearchParams) -> list[WGListing]:
         )
 
         page: Page = await context.new_page()
-        await stealth_async(page)  # apply stealth patches
+        # Apply stealth patches to hide automation signals
+        stealth = Stealth()
+        await stealth.apply_stealth_async(page)
 
         try:
             url = params.build_url()
