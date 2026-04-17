@@ -60,7 +60,7 @@ export async function fetchListings(filters: Filters = {}): Promise<ListingsResp
   if (filters.limit != null) params.set("limit", String(filters.limit));
   if (filters.offset != null) params.set("offset", String(filters.offset));
 
-  const res = await fetch(`${API_BASE}/api/v1/listings/?${params}`, {
+  const res = await fetch(`${API_BASE}/api/v1/listings/${params ? "?" + params : ""}`, {
     next: { revalidate: 30 }, // ISR: revalidate every 30s
   });
 
