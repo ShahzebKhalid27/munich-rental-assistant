@@ -131,6 +131,62 @@ async def get_listing(
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
 
+
+# ── GET /api/v1/listings/match/{profile_id} ──────────────────────────────────
+
+@router.get("/match/{profile_id}")
+async def match_listings(
+    profile_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    limit: int = Query(10, ge=1, le=50),
+    use_llm: bool = Query(False, description="Enable LLM-powered scoring (slower, more accurate)"),
+) -> dict:
+    """
+    Get top-matching listings for a user's search profile.
+
+    Phase 1: Rule-based hard filters + price/size proximity scoring.
+    Phase 2+: LLM adds Lage, description quality, and vibe matching.
+
+    Set use_llm=true for richer scoring (costs API calls).
+    """
+    profile = db.scalars(
+        select(SearchProfile).where(SearchProfile.id == profile_id, SearchProfile.is_active == True)
+    ).first()
+
+    if not profile:
+        raise HTTPException(status_code=404, detail="Search profile not found")
+
+    # Fetch active listings (most recent first)
+    listings = db.scalars(
+        select(Listing)
+        .options(joinedload(Listing.images))
+        .order_by(Listing.created_at.desc())
+        .limit(200)
+    ).unique().all()
+
+    top_matches = await get_top_matches(listings, profile, limit=limit, use_llm=use_llm)
+
+    return {
+        "profile_id": profile_id,
+        "profile_name": profile.name,
+        "total_scanned": len(listings),
+        "matches_found": len(top_matches),
+        "use_llm": use_llm,
+        "results": [
+            {
+                "listing_id": listing.id,
+                "title": listing.title,
+                "price_total": listing.price_total,
+                "size_sqm": listing.size_sqm,
+                "district": listing.district,
+                "image_urls": [img.source_url for img in listing.images if img.source_url],
+                "score": round(score, 3),
+                "explanation": explanation,
+            }
+            for listing, score, explanation in top_matches
+        ],
+    }
+
     return ListingResponse(
         id=listing.id,
         external_id=listing.external_id,
@@ -259,3 +315,5 @@ async def _scrape_and_save_task(params: WGSearchParams, pages: int):
 
 
 import logging
+
+from ...services.matching import get_top_matches, is_match_hard
