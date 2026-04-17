@@ -1,11 +1,28 @@
+# Byte-compiled / optimized
 __pycache__/
 *.py[cod]
 *.sqlite3
+
+# Environment
 .env
 .env.*
+.venv/
+venv/
+ENV/
+env/
 
+# Database (dev)
+*.db
+
+# Media uploads
 /media/
 
-/node_modules/
-.next/
-/dist/
+# Node (frontend)
+/frontend/node_modules/
+/frontend/.next/
+/frontend/dist/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
