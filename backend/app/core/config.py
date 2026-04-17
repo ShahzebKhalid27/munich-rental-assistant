@@ -1,5 +1,7 @@
 from functools import lru_cache
-from pydantic import BaseSettings, AnyUrl
+
+from pydantic import AnyUrl
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -9,12 +11,24 @@ class Settings(BaseSettings):
     database_url: AnyUrl | None = None
     redis_url: AnyUrl | None = None
 
-    media_storage_backend: str = "local"  # or "s3" später
-    media_root: str = "./media"  # für lokale Entwicklung
+    media_storage_backend: str = "local"
+    media_root: str = "./media"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # Security
+    secret_key: str = "change-me-before-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+
+    # LLM
+    llm_api_key: str | None = None
+    llm_base_url: str | None = None
+    llm_model: str | None = None
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 @lru_cache()

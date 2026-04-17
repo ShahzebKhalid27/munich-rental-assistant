@@ -64,6 +64,11 @@ def filename_from_url(url: str) -> str:
     return f"img_{h}.jpg"
 
 
+def get_listing_image_url(listing_id: int, filename: str) -> str:
+    """Backward-compatible alias for public_url_for."""
+    return public_url_for(listing_id, filename)
+
+
 def public_url_for(listing_id: int, filename: str) -> str:
     """Public URL for a stored listing image.
 
