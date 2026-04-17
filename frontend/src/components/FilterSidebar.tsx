@@ -22,8 +22,8 @@ const MUNICH_DISTRICTS = [
   "Maxvorstadt", "Schwabing", "Au", "Haidhausen", "Bogenhausen",
   "Neuhausen", "Giesing", "Obergiesing", "Untergiesing", "Thalkirchen",
   "Sendling", "Westpark", "Schwanthalerhöhe", "Isarvorstadt", "Lehel",
-  "Altstadt", "Neuvesting", "Ramersdorf", "Bockhorn", "Obermenzing",
-  "Untermenzing", "Pasing", "Obermenzing", "Laim", "Friedenheim",
+  "Altstadt", "Neuhausen", "Ramersdorf", "Bockhorn", "Obermenzing",
+  "Untermenzing", "Pasing", "Laim", "Friedenheim",
   "Nymphenburg", "Moosach", "Allach", "Feldmoching", "Haderner Stern",
   "Hackenviertel", "Theresienstraße", "Augustenviertel", "Kreuzviertel",
 ];
