@@ -19,13 +19,14 @@ interface FilterSidebarProps {
 }
 
 const MUNICH_DISTRICTS = [
-  "Maxvorstadt", "Schwabing", "Au", "Haidhausen", "Bogenhausen",
-  "Neuhausen", "Giesing", "Obergiesing", "Untergiesing", "Thalkirchen",
-  "Sendling", "Westpark", "Schwanthalerhöhe", "Isarvorstadt", "Lehel",
-  "Altstadt", "Neuhausen", "Ramersdorf", "Bockhorn", "Obermenzing",
-  "Untermenzing", "Pasing", "Laim", "Friedenheim",
-  "Nymphenburg", "Moosach", "Allach", "Feldmoching", "Haderner Stern",
-  "Hackenviertel", "Theresienstraße", "Augustenviertel", "Kreuzviertel",
+  "Allach", "Altstadt", "Au", "Bogenhausen", "Bockhorn",
+  "Feldmoching", "Friedenheim", "Giesing", "Hackenviertel",
+  "Haderner Stern", "Haidhausen", "Isarvorstadt", "Laim",
+  "Lehel", "Maxvorstadt", "Moosach", "Neuhausen",
+  "Nymphenburg", "Obermenzing", "Obergiesing", "Pasing",
+  "Ramersdorf", "Schwabing", "Schwanthalerhöhe", "Sendling",
+  "Thalkirchen", "Theresienstraße", "Untergiesing", "Untermenzing",
+  "Westpark",
 ];
 
 export default function FilterSidebar({ onApply, onScrape, isScraping }: FilterSidebarProps) {
