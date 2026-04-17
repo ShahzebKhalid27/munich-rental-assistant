@@ -17,6 +17,7 @@ export interface Listing {
   available_from: string | null;
   image_urls: string[];
   created_at: string;
+  url?: string;
 }
 
 export interface ListingsResponse {
