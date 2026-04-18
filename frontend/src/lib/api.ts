@@ -70,24 +70,25 @@ export async function fetchListings(filters: Filters = {}): Promise<ListingsResp
 }
 
 export async function triggerScrape(params: {
+  source?: "wg_gesucht" | "immoscout24";
   city?: string;
   district?: string;
   max_price?: number;
   min_size_sqm?: number;
   pages?: number;
 }): Promise<{ status: string; message: string }> {
-  const body: Record<string, string | number> = {};
-  if (params.city) body.city = params.city;
-  if (params.district) body.district = params.district;
-  if (params.max_price != null) body.max_price = params.max_price;
-  if (params.min_size_sqm != null) body.min_size_sqm = params.min_size_sqm;
-  if (params.pages != null) body.pages = params.pages;
+  const searchParams = new URLSearchParams();
+  if (params.source) searchParams.set("source", params.source);
+  if (params.city) searchParams.set("city", params.city);
+  if (params.district) searchParams.set("district", params.district);
+  if (params.max_price != null) searchParams.set("max_price", String(params.max_price));
+  if (params.min_size_sqm != null) searchParams.set("min_size_sqm", String(params.min_size_sqm));
+  if (params.pages != null) searchParams.set("pages", String(params.pages));
 
-  const res = await fetch(`${API_BASE}/api/v1/listings/scrape`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(
+    `${API_BASE}/api/v1/listings/scrape?${searchParams}`,
+    { method: "POST" },
+  );
 
   if (!res.ok) throw new Error(`Scrape API error: ${res.status}`);
   return res.json();

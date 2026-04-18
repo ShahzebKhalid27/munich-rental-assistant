@@ -54,10 +54,11 @@ export default function ListingGrid() {
     void loadListings(newFilters);
   };
 
-  const handleScrape = async () => {
+  const handleScrape = async (source: "wg_gesucht" | "immoscout24") => {
     setScrapeLoading(true);
     try {
       await triggerScrape({
+        source: source,
         city: filters.city,
         district: filters.district || undefined,
         max_price: filters.max_price ? parseFloat(filters.max_price) : undefined,
