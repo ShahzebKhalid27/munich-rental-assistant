@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/lib/auth";
 import type { SearchProfileResponse } from "@/lib/profile_api";
 
 interface CreateProfileForm {
@@ -25,6 +27,13 @@ const SAMPLE_DISTRICTS = [
 ];
 
 export default function ProfilePage() {
+  const { user, token, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && !user) router.push("/login");
+  }, [user, authLoading, router]);
+
   const [profiles, setProfiles] = useState<SearchProfileResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -39,8 +48,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
 
   async function loadProfiles() {
+    if (!token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/v1/users/me/profiles");
+      const res = await fetch("http://localhost:8000/api/v1/users/me/profiles", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setProfiles(Array.isArray(data) ? data : []);
@@ -50,8 +62,11 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
-    void loadProfiles().then(() => setLoading(false));
-  }, []);
+    if (token) {
+      void loadProfiles().then(() => setLoading(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +87,10 @@ export default function ProfilePage() {
 
       const res = await fetch("http://localhost:8000/api/v1/users/me/profiles", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

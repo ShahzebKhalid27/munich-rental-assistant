@@ -68,6 +68,11 @@ async def list_listings(
         # Heuristic: listings with title containing "Zimmer", "WG", "Room" are WG
         query = query.where(Listing.title.ilike("%zimmer%") | Listing.title.ilike("%wg%") | Listing.title.ilike("%room%"))
 
+    # Default: only listings from the last 10 days
+    from datetime import timedelta
+    cutoff = datetime.utcnow() - timedelta(days=10)
+    query = query.where(Listing.created_at >= cutoff)
+
     # Count total
     count_q = select(func.count()).select_from(Listing)
     if city:
@@ -84,6 +89,9 @@ async def list_listings(
         count_q = count_q.where(Listing.size_sqm >= min_size)
     if max_size is not None:
         count_q = count_q.where(Listing.size_sqm <= max_size)
+
+    # Apply date filter to count query too
+    count_q = count_q.where(Listing.created_at >= cutoff)
 
     total = db.scalar(count_q) or 0
 
